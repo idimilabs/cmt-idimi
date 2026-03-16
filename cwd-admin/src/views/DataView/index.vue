@@ -32,6 +32,7 @@
           <option value="cwd">{{ t("data.sections.comments.source.cwd") }}</option>
           <option value="twikoo">{{ t("data.sections.comments.source.twikoo") }}</option>
           <option value="artalk">{{ t("data.sections.comments.source.artalk") }}</option>
+          <option value="valine">{{ t("data.sections.comments.source.valine") }}</option>
         </select>
         <button
           class="card-button secondary"
@@ -40,6 +41,16 @@
         >
           {{ t("data.sections.comments.importButton") }}
         </button>
+      </div>
+    </div>
+
+    <!-- 导入日志 -->
+    <div v-if="importLogs.length > 0" class="log-container">
+      <div class="log-title">{{ t("data.logs.title") }}</div>
+      <div class="log-list">
+        <div v-for="(log, index) in importLogs" :key="index" class="log-item">
+          {{ log }}
+        </div>
       </div>
     </div>
 
@@ -176,46 +187,41 @@
     <input
       type="file"
       ref="fileInput"
-      accept=".json"
+      accept=".json,.jsonl"
       style="display: none"
       @change="handleFileChange"
     />
 
-    <!-- 导入日志 -->
-    <div v-if="importLogs.length > 0" class="log-container">
-      <div class="log-title">{{ t("data.logs.title") }}</div>
-      <div class="log-list">
-        <div v-for="(log, index) in importLogs" :key="index" class="log-item">
-          {{ log }}
-        </div>
-      </div>
-    </div>
-
-    <!-- 前缀确认弹窗 -->
-    <div v-if="showPrefixModal" class="modal-overlay">
+    <!-- site_id 选择弹窗 -->
+    <div v-if="showSiteIdModal" class="modal-overlay">
       <div class="modal">
-        <h3 class="modal-title">{{ t("data.prefixModal.title") }}</h3>
+        <h3 class="modal-title">{{ t("data.siteIdModal.title") }}</h3>
         <p class="modal-desc">
-          {{ t("data.prefixModal.descPart1") }}
-          <strong>{{ missingPrefixCount }}</strong>
-          {{ t("data.prefixModal.descPart2") }}<br />
-          {{ t("data.prefixModal.descPart3") }}
+          {{ t("data.siteIdModal.desc") }}
         </p>
         <div class="form-group">
-          <label class="form-label">{{ t("data.prefixModal.label") }}</label>
+          <label class="form-label">{{ t("data.siteIdModal.selectLabel") }}</label>
+          <select v-model="selectedSiteId" class="form-select" style="width: 100%">
+            <option value="default">{{ t("layout.defaultSite") }}</option>
+            <option v-for="item in siteOptions" :key="item.value" :value="item.value">
+              {{ item.label }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t("data.siteIdModal.customLabel") }}</label>
           <input
-            v-model="urlPrefix"
+            v-model="customSiteId"
             class="form-input"
-            :placeholder="t('data.prefixModal.placeholder')"
-            @keyup.enter="confirmPrefix"
+            :placeholder="t('data.siteIdModal.customPlaceholder')"
           />
         </div>
         <div class="modal-actions">
-          <button class="modal-btn secondary" @click="cancelPrefix">
-            {{ t("data.prefixModal.skip") }}
+          <button class="modal-btn secondary" @click="cancelSiteId">
+            {{ t("data.siteIdModal.cancel") }}
           </button>
-          <button class="modal-btn primary" @click="confirmPrefix">
-            {{ t("data.prefixModal.confirm") }}
+          <button class="modal-btn primary" @click="confirmSiteId">
+            {{ t("data.siteIdModal.confirm") }}
           </button>
         </div>
       </div>
@@ -245,6 +251,7 @@ import {
   saveS3Settings,
   triggerS3Backup,
   S3SettingsResponse,
+  fetchSiteList,
 } from "../../api/admin";
 import S3BackupModal from "./components/S3BackupModal.vue";
 import { useSite } from "../../composables/useSite";
@@ -264,10 +271,11 @@ const { currentSiteId } = useSite();
 // 当前导入模式: comments | config | stats | backup
 const currentImportMode = ref<string>("comments");
 
-// 前缀处理相关状态
-const showPrefixModal = ref(false);
-const urlPrefix = ref("");
-const missingPrefixCount = ref(0);
+// site_id 选择相关状态
+const showSiteIdModal = ref(false);
+const siteOptions = ref<{ label: string; value: string }[]>([]);
+const selectedSiteId = ref("");
+const customSiteId = ref("");
 const pendingJson = ref<any[]>([]);
 const s3Config = ref<S3SettingsResponse>({
   endpoint: "",
@@ -323,7 +331,26 @@ function handleS3BackupModalClose() {
 
 onMounted(() => {
   loadS3Config();
+  loadSiteOptions();
 });
+
+async function loadSiteOptions() {
+  try {
+    const res = await fetchSiteList();
+    const sites = Array.isArray(res.sites) ? res.sites : [];
+    const unique = Array.from(new Set(sites));
+    siteOptions.value = unique
+      .filter((s) => s && s !== "default")
+      .map((s) => ({
+        label: s,
+        value: s,
+      }));
+    // 默认选择当前站点
+    selectedSiteId.value = currentSiteId.value || "default";
+  } catch {
+    siteOptions.value = [];
+  }
+}
 
 function showToast(msg: string, type: "success" | "error" = "success") {
   toastMessage.value = msg;
@@ -395,13 +422,19 @@ async function handleFileChange(event: Event) {
     try {
       const content = e.target?.result as string;
       let json;
-      try {
-        json = JSON.parse(content);
-      } catch (parseError) {
-        throw new Error(t("data.messages.jsonParseFailed"));
-      }
 
-      addLog(t("data.messages.fileParseSuccess"));
+      // Valine 使用 NDJSON 格式，需要特殊处理
+      if (currentImportMode.value === "comments" && importSource.value === "valine") {
+        json = parseNDJSON(content);
+        addLog(t("data.messages.fileParseSuccess"));
+      } else {
+        try {
+          json = JSON.parse(content);
+        } catch (parseError) {
+          throw new Error(t("data.messages.jsonParseFailed"));
+        }
+        addLog(t("data.messages.fileParseSuccess"));
+      }
 
       switch (currentImportMode.value) {
         case "comments":
@@ -434,6 +467,29 @@ async function handleFileChange(event: Event) {
   reader.readAsText(file);
 }
 
+// 解析 NDJSON (JSON-streaming) 格式，用于 Valine/LeanCloud 导出数据
+function parseNDJSON(content: string): any[] {
+  const lines = content.split("\n");
+  const results: any[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    // 跳过空行和文件类型声明行
+    if (!line || line.startsWith("#filetype:")) {
+      continue;
+    }
+    try {
+      const obj = JSON.parse(line);
+      results.push(obj);
+    } catch (e) {
+      // 忽略解析失败的行，继续处理下一行
+      console.warn(`Failed to parse line ${i + 1}: ${line.substring(0, 50)}...`);
+    }
+  }
+
+  return results;
+}
+
 // 导入处理逻辑
 async function processImportConfig(data: any) {
   const res = await importConfig(data);
@@ -460,31 +516,21 @@ async function processImportComments(json: any) {
   const comments = Array.isArray(json) ? json : [json];
   addLog(t("data.messages.parsedCommentsCount", { count: comments.length }));
 
-  // 检查 URL 前缀 (仅针对评论导入)
-  let missingCount = 0;
-  for (const item of comments) {
-    const url = item.href || item.page_key || item.post_slug;
-    if (url && typeof url === "string") {
-      if (!url.startsWith("http://") && !url.startsWith("https://")) {
-        missingCount++;
-      }
-    }
-  }
-
-  if (missingCount > 0) {
-    addLog(t("data.messages.detectMissingPrefix", { count: missingCount }));
-    missingPrefixCount.value = missingCount;
-    pendingJson.value = comments;
-    showPrefixModal.value = true;
-    // 暂停，等待 Modal 操作
-  } else {
-    await executeImportComments(comments);
-  }
+  // 弹出 site_id 选择弹窗
+  pendingJson.value = comments;
+  selectedSiteId.value = currentSiteId.value || "default";
+  customSiteId.value = "";
+  showSiteIdModal.value = true;
 }
 
-async function executeImportComments(comments: any[]) {
+async function executeImportComments(comments: any[], siteId?: string) {
   try {
-    const res = await importComments(comments);
+    // 为所有评论设置 site_id
+    const commentsWithSiteId = comments.map((item) => ({
+      ...item,
+      site_id: siteId || currentSiteId.value || "default",
+    }));
+    const res = await importComments(commentsWithSiteId);
     addLog(t("data.messages.importCommentsDone", { message: res.message }));
     showToast(t("data.messages.importCommentsSuccess"));
   } catch (err: any) {
@@ -495,59 +541,19 @@ async function executeImportComments(comments: any[]) {
   }
 }
 
-// 前缀确认逻辑
-async function confirmPrefix() {
-  if (!urlPrefix.value) {
-    showToast(t("data.messages.prefixRequired"), "error");
-    return;
-  }
-
-  let prefix = urlPrefix.value.trim();
-  const comments = pendingJson.value.map((item) => {
-    const newItem = { ...item };
-
-    // Twikoo
-    if (newItem.href && typeof newItem.href === "string") {
-      if (!newItem.href.startsWith("http://") && !newItem.href.startsWith("https://")) {
-        newItem.href = joinUrl(prefix, newItem.href);
-      }
-    }
-    // Artalk
-    if (newItem.page_key && typeof newItem.page_key === "string") {
-      if (
-        !newItem.page_key.startsWith("http://") &&
-        !newItem.page_key.startsWith("https://")
-      ) {
-        newItem.page_key = joinUrl(prefix, newItem.page_key);
-      }
-    }
-    // CWD
-    if (newItem.post_slug && typeof newItem.post_slug === "string") {
-      if (
-        !newItem.post_slug.startsWith("http://") &&
-        !newItem.post_slug.startsWith("https://")
-      ) {
-        newItem.post_slug = joinUrl(prefix, newItem.post_slug);
-      }
-    }
-    return newItem;
-  });
-
-  showPrefixModal.value = false;
-  addLog(t("data.messages.prefixAdded"));
-  await executeImportComments(comments);
+// site_id 确认逻辑
+async function confirmSiteId() {
+  const siteId = customSiteId.value.trim() || selectedSiteId.value || "default";
+  addLog(t("data.messages.siteIdSelected", { siteId }));
+  showSiteIdModal.value = false;
+  await executeImportComments(pendingJson.value, siteId);
 }
 
-function cancelPrefix() {
-  showPrefixModal.value = false;
-  addLog(t("data.messages.skipPrefix"));
-  executeImportComments(pendingJson.value);
-}
-
-function joinUrl(prefix: string, path: string): string {
-  if (prefix.endsWith("/") && path.startsWith("/")) return prefix + path.substring(1);
-  if (!prefix.endsWith("/") && !path.startsWith("/")) return prefix + "/" + path;
-  return prefix + path;
+function cancelSiteId() {
+  showSiteIdModal.value = false;
+  addLog(t("data.messages.importCancelled"));
+  importing.value = false;
+  pendingJson.value = [];
 }
 </script>
 

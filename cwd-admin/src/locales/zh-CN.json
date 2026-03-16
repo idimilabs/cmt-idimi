@@ -95,7 +95,8 @@
         "source": {
           "cwd": "CWD (.json)",
           "twikoo": "Twikoo (.json)",
-          "artalk": "Artalk (.json)"
+          "artalk": "Artalk (.json)",
+          "valine": "Valine (.jsonl)"
         }
       },
       "config": {
@@ -144,15 +145,14 @@
     "logs": {
       "title": "操作日志"
     },
-    "prefixModal": {
-      "title": "检测到 URL 缺失前缀",
-      "descPart1": "检测到 ",
-      "descPart2": " 条评论的 URL 不存在域名前缀（http/https）。",
-      "descPart3": "是否在导入时统一添加？",
-      "label": "域名前缀 (例如 https://example.me)",
-      "placeholder": "请输入域名前缀",
-      "skip": "直接导入 (不添加)",
-      "confirm": "添加并导入"
+    "siteIdModal": {
+      "title": "选择目标站点",
+      "desc": "请选择导入评论所属的站点 ID，或输入自定义站点 ID。",
+      "selectLabel": "选择站点",
+      "customLabel": "自定义站点 ID（留空则使用上方选择的站点）",
+      "customPlaceholder": "输入自定义站点 ID",
+      "cancel": "取消",
+      "confirm": "确认导入"
     },
     "messages": {
       "exportSuccess": "导出成功",
@@ -163,14 +163,12 @@
       "importStatsSuccess": "统计数据导入成功",
       "importBackupSuccess": "全量恢复成功",
       "importCommentsSuccess": "评论导入成功",
-      "prefixRequired": "请输入域名前缀",
       "importStart": "开始导入: {name} (模式: {mode})",
       "fileParseSuccess": "文件解析成功，开始处理...",
       "errorWithMessage": "错误: {msg}",
       "parsedCommentsCount": "解析到 {count} 条评论数据",
-      "detectMissingPrefix": "检测到 {count} 条 URL 缺失前缀，等待用户确认...",
-      "prefixAdded": "已添加前缀，继续导入...",
-      "skipPrefix": "用户跳过前缀添加",
+      "siteIdSelected": "已选择站点: {siteId}",
+      "importCancelled": "导入已取消",
       "readFileFailedLog": "读取文件失败",
       "importCommentsDone": "导入完成: {message}"
     }

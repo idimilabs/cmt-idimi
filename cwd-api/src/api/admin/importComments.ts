@@ -10,13 +10,48 @@ export const importComments = async (c: Context<{ Bindings: Bindings }>) => {
 			return c.json({ message: '导入数据为空' }, 400);
 		}
 
-        // 映射 Twikoo / Artalk 数据结构到 CWD 结构
+        // 映射 Twikoo / Artalk / Valine 数据结构到 CWD 结构
 		const comments = rawComments.map((item: any) => {
+			// Valine/LeanCloud 特征检测
+			const isValine =
+				item.objectId !== undefined &&
+				item.insertedAt !== undefined &&
+				item.nick !== undefined;
 			// Twikoo 特征检测
 			const isTwikoo =
-				item.href !== undefined || item.nick !== undefined || item.comment !== undefined;
+				item.href !== undefined || item.comment !== undefined;
 			// Artalk 特征检测 (page_key 是 Artalk 特有的)
 			const isArtalk = item.page_key !== undefined && item.content !== undefined;
+
+			if (isValine) {
+				// Valine/LeanCloud 映射逻辑
+				// 处理时间: insertedAt 是嵌套对象 { __type: "Date", iso: "ISO字符串" }
+				let created = Date.now();
+				if (item.insertedAt && item.insertedAt.iso) {
+					created = new Date(item.insertedAt.iso).getTime();
+				} else if (item.createdAt) {
+					created = new Date(item.createdAt).getTime();
+				}
+
+				return {
+					created, // >>> insertedAt.iso 转为时间戳
+					post_slug: item.url || '', // >>> url
+					post_url: item.url || '', // >>> url
+					name: item.nick || 'Anonymous', // >>> nick
+					email: item.mail || '', // >>> mail
+					url: item.link || null, // >>> link
+					ip_address: item.ip || null, // >>> ip
+					device: null, // >>> 保持空
+					os: null, // >>> 保持空
+					browser: null, // >>> 保持空
+					ua: item.ua || null, // >>> ua
+					content_text: item.comment || '', // >>> comment
+					content_html: item.comment || '', // >>> comment
+					parent_id: null, // >>> 保持 null
+					status: 'approved', // >>> 保持 "approved"
+					site_id: item.site_id
+				};
+			}
 
 			if (isArtalk) {
 				// Artalk 映射逻辑
@@ -49,7 +84,8 @@ export const importComments = async (c: Context<{ Bindings: Bindings }>) => {
 					content_text: item.content || '', // >>> content
 					content_html: item.content || '', // >>> content
 					parent_id: null, // >>> 保持 null
-					status: 'approved' // >>> 保持 "approved"
+					status: 'approved', // >>> 保持 "approved"
+					site_id: item.site_id
 				};
 			}
 
@@ -86,7 +122,8 @@ export const importComments = async (c: Context<{ Bindings: Bindings }>) => {
                     content_text: item.comment || "", // >>> comment
                     content_html: item.comment || "", // >>> comment
                     parent_id: null, // >>> 保持 null
-                    status: "approved" // >>> approved
+                    status: "approved", // >>> approved
+                    site_id: item.site_id
                 };
             }
             

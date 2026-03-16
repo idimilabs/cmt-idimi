@@ -95,7 +95,8 @@
         "source": {
           "cwd": "CWD (.json)",
           "twikoo": "Twikoo (.json)",
-          "artalk": "Artalk (.json)"
+          "artalk": "Artalk (.json)",
+          "valine": "Valine (.jsonl)"
         }
       },
       "config": {
@@ -144,15 +145,14 @@
     "logs": {
       "title": "Operation Logs"
     },
-    "prefixModal": {
-      "title": "Missing URL Prefix Detected",
-      "descPart1": "Detected ",
-      "descPart2": " comments with URL missing protocol prefix (http/https).",
-      "descPart3": "Add prefix during import?",
-      "label": "Domain Prefix (e.g. https://example.me)",
-      "placeholder": "Enter domain prefix",
-      "skip": "Skip (Don't Add)",
-      "confirm": "Add & Import"
+    "siteIdModal": {
+      "title": "Select Target Site",
+      "desc": "Select the site ID for imported comments, or enter a custom site ID.",
+      "selectLabel": "Select Site",
+      "customLabel": "Custom Site ID (Leave empty to use selected site)",
+      "customPlaceholder": "Enter custom site ID",
+      "cancel": "Cancel",
+      "confirm": "Import"
     },
     "messages": {
       "exportSuccess": "Export Success",
@@ -163,14 +163,12 @@
       "importStatsSuccess": "Stats Imported",
       "importBackupSuccess": "Full Restore Success",
       "importCommentsSuccess": "Comments Imported",
-      "prefixRequired": "Please enter domain prefix",
       "importStart": "Importing: {name} (Mode: {mode})",
       "fileParseSuccess": "File parsed, processing...",
       "errorWithMessage": "Error: {msg}",
       "parsedCommentsCount": "Parsed {count} comments",
-      "detectMissingPrefix": "Detected {count} URLs missing prefix, waiting for confirmation...",
-      "prefixAdded": "Prefix added, continuing...",
-      "skipPrefix": "Skipped prefix addition",
+      "siteIdSelected": "Site selected: {siteId}",
+      "importCancelled": "Import cancelled",
       "readFileFailedLog": "Read file failed",
       "importCommentsDone": "Import Done: {message}"
     }
