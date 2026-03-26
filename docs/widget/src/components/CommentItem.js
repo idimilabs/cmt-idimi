@@ -5,6 +5,7 @@
 import { Component } from './Component.js';
 import { ReplyEditor } from './ReplyEditor.js';
 import { formatRelativeTime } from '@/utils/date.js';
+import { replaceEmojiInHtml } from '@/utils/markdown.js';
 
 export class CommentItem extends Component {
 	// 防抖缓存，防止连续点击
@@ -202,7 +203,7 @@ export class CommentItem extends Component {
 		// 设置评论内容的 TEXT
 		const contentEl = root.querySelector('.cwd-comment-content');
 		if (contentEl) {
-			contentEl.innerHTML = comment.contentHtml;
+			contentEl.innerHTML = replaceEmojiInHtml(comment.contentHtml);
 		}
 
 		// 创建回复编辑器
@@ -371,8 +372,12 @@ export class CommentItem extends Component {
 			likedComments.add(commentId);
 			this.saveLikedComments(likedComments);
 			this.props.onLikeComment(commentId, true);
+		} else {
+			// 已点赞，执行取消点赞
+			likedComments.delete(commentId);
+			this.saveLikedComments(likedComments);
+			this.props.onLikeComment(commentId, false);
 		}
-		// 已点赞则不做任何操作
 	}
 
 	/**
