@@ -21,6 +21,66 @@
 
 </div>
 
+## 部署到 Cloudflare
+
+这个仓库的后端位于 [`cwd-api`](./cwd-api)，默认就是 Cloudflare Workers + D1 + KV 的部署形态。
+
+### 需要准备
+
+- 一个 Cloudflare 账号
+- 一个 D1 数据库
+- 一个 KV Namespace
+- `ADMIN_NAME` 和 `ADMIN_PASSWORD` 两个后台登录变量
+
+### 推荐流程
+
+1. 进入后端目录
+
+```bash
+cd cwd-api
+```
+
+2. 安装依赖
+
+```bash
+npm install
+```
+
+3. 登录 Cloudflare 并创建资源
+
+```bash
+npx wrangler login
+npx wrangler d1 create CWD_DB
+npx wrangler d1 execute CWD_DB --remote --file=./schemas/comment.sql
+npx wrangler kv namespace create CWD_AUTH_KV
+```
+
+4. 把 `cwd-api/wrangler.jsonc` 里的 `database_id` 和 KV `id` 改成你自己的资源 ID
+
+5. 使用 Cloudflare secrets 写入 `ADMIN_NAME`、`ADMIN_PASSWORD`
+
+```bash
+npx wrangler secret put ADMIN_NAME
+npx wrangler secret put ADMIN_PASSWORD
+```
+
+6. 部署 Worker
+
+```bash
+npm run deploy
+```
+
+### 评论端接入
+
+评论组件的接入方式和参数说明见 [`docs/guide/frontend-config.md`](./docs/guide/frontend-config.md)。
+
+如果你只是要把 CWD 作为网站评论系统，核心就是：
+
+- 后端 API 部署到 Cloudflare Workers
+- 网站前端引入 `cwd-widget`
+- `apiBaseUrl` 指向你部署后的 Worker 地址
+- 站点多语言或多路径时，用 `postSlug` 做聚合控制
+
 ## Preview
 
 **评论端**

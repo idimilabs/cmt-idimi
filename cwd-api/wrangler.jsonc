@@ -1,0 +1,32 @@
+/**
+ * Cloudflare Workers configuration for cmt-idimi / CWD API.
+ *
+ * If you fork this project to another Cloudflare account, replace the
+ * D1 database ID and KV namespace ID with your own values.
+ *
+ * Reference docs:
+ * - https://cwd.js.org/guide/backend-config.html
+ * - https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "cmt-idimi-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-09-06",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": true,
+	"preview_urls": true,
+	"d1_databases": [
+		{
+			"binding": "CWD_DB",
+			"database_name": "CWD_DB",
+			"database_id": "d11db34c-01dc-4d69-a5d4-ba670114eb15"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "CWD_AUTH_KV",
+			"id": "78b8db6d90b44051807d436c913315d6"
+		}
+	]
+}
